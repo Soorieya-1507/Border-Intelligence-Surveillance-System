@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+websockets
+pydantic
+opencv-python-headless
+numpy
+ultralytics
+yt-dlp

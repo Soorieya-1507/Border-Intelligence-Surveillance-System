@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IBVAP - Intelligent Border Video Analytics Platform | MHA - SSB</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body { background-color: #0b0f17; color: #c9d1d9; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace; }
+        .feed-card { border: 1px solid #1f293d; border-radius: 6px; background-color: #0f1623; }
+        .hud-border { border: 1px solid #2d3748; }
+        .tactical-btn-active { background-color: #1e3a8a; border-color: #3b82f6; color: #ffffff; }
+        .alert-card { transition: all 0.2s ease-in-out; }
+        .alert-card:hover { transform: translateX(-3px); border-color: #4b5563; }
+        .alert-high { border-left: 4px solid #ef4444; background: linear-gradient(90deg, rgba(239, 68, 68, 0.15) 0%, rgba(15, 22, 35, 0.8) 100%); }
+        .alert-med { border-left: 4px solid #f59e0b; background: linear-gradient(90deg, rgba(245, 158, 11, 0.12) 0%, rgba(15, 22, 35, 0.8) 100%); }
+        .radar-pulse { animation: radar 2s infinite ease-out; }
+        @keyframes radar { 0% { transform: scale(0.95); opacity: 0.8; } 50% { transform: scale(1.05); opacity: 0.3; } 100% { transform: scale(0.95); opacity: 0.8; } }
+        .blink { animation: blinker 1s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden select-none">
+    
+    <!-- MHA / SSB Tactical Top Header -->
+    <header class="bg-gray-950 border-b border-gray-800 px-4 py-2.5 flex justify-between items-center z-20">
+        <div class="flex items-center space-x-3">
+            <div class="w-8 h-8 rounded bg-blue-900 border border-blue-500 flex items-center justify-center font-bold text-white text-xs">
+                SSB
+            </div>
+            <div>
+                <div class="flex items-center space-x-2">
+                    <h1 class="text-lg font-extrabold tracking-wider text-white">IBVAP <span class="text-xs bg-red-950 text-red-400 border border-red-800 px-1.5 py-0.5 rounded font-mono">SECTOR 12</span></h1>
+                    <span class="text-xs text-green-400 font-mono flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-green-500 inline-block animate-ping"></span> LIVE OPS</span>
+                </div>
+                <p class="text-xs text-gray-400 font-mono">INTELLIGENT BORDER VIDEO ANALYTICS PLATFORM &bull; MHA</p>
+            </div>
+        </div>
+
+        <!-- System & Audio Controls -->
+        <div class="flex items-center space-x-3 text-xs font-mono">
+            <!-- Audio Siren Arm Button -->
+            <button id="audio-toggle-btn" class="bg-gray-900 hover:bg-gray-800 text-gray-300 border border-gray-700 px-3 py-1.5 rounded flex items-center gap-2 cursor-pointer transition">
+                <i class="fas fa-volume-up text-red-400" id="audio-icon"></i>
+                <span>SIREN:</span> <span id="audio-status-text" class="text-red-400 font-bold">MUTED</span>
+            </button>
+
+            <!-- QRT Readiness Status -->
+            <div class="bg-gray-900 border border-gray-700 px-3 py-1.5 rounded flex items-center gap-2">
+                <i class="fas fa-shield-alt text-blue-400"></i>
+                <span class="text-gray-400">QRT:</span> <span class="text-green-400 font-bold" id="qrt-status">STANDBY</span>
+            </div>
+
+            <!-- Health Status & Encrypted Link -->
+            <div class="bg-gray-900 border border-gray-700 px-3 py-1.5 rounded flex items-center gap-2">
+                <span class="text-gray-400">LINK:</span> <span class="text-green-400 font-bold" id="ws-status-badge">SECURE (WS)</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 flex overflow-hidden">
+        
+        <!-- Center-Left: Video Analytics Console -->
+        <section class="flex-1 p-3 bg-gray-950 flex flex-col space-y-2 overflow-hidden">
+            
+            <!-- Channel Switcher & Telemetry HUD -->
+            <div class="flex justify-between items-center bg-gray-900 p-2 rounded border border-gray-800 text-xs font-mono">
+                <!-- Channel Switch Tabs -->
+                <div class="flex space-x-2">
+                    <button id="btn-cam1" class="px-3 py-1.5 rounded border border-blue-600 bg-blue-950 text-blue-300 font-bold flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-green-400"></span> CAM 01: BOP ALPHA (PERIMETER)
+                    </button>
+                    <button id="btn-cam2" class="px-3 py-1.5 rounded border border-gray-700 bg-gray-800 text-gray-400 font-bold hover:bg-gray-700 flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-yellow-400"></span> CAM 02: BOP BRAVO (CHECKPOST)
+                    </button>
+                    <button id="btn-dual" class="px-3 py-1.5 rounded border border-gray-700 bg-gray-800 text-gray-400 font-bold hover:bg-gray-700 flex items-center gap-1.5">
+                        <i class="fas fa-th-large"></i> DUAL GRID
+                    </button>
+                </div>
+
+                <!-- Live Stream Telemetry HUD -->
+                <div class="flex items-center space-x-4 pr-2">
+                    <div>IN FPS: <span class="text-blue-400 font-bold" id="stat-in-fps">15.0</span></div>
+                    <div>AI FPS: <span class="text-green-400 font-bold" id="stat-ai-fps">14.8</span></div>
+                    <div>LATENCY: <span class="text-yellow-400 font-bold" id="stat-latency">18 ms</span></div>
+                    <div>DROPPED: <span class="text-red-400 font-bold" id="stat-dropped">0</span></div>
+                    <div>STATE: <span class="text-green-400 font-bold" id="stat-cam-state">HEALTHY</span></div>
+                </div>
+            </div>
+
+            <!-- Tactical Video Display Container -->
+            <div id="video-container" class="flex-1 feed-card flex items-center justify-center relative overflow-hidden">
+                
+                <!-- Single View (CAM 01 or CAM 02) -->
+                <div id="single-view-pane" class="w-full h-full flex items-center justify-center relative">
+                    <img id="stream-img-primary" src="" alt="Stream Offline" class="max-h-full max-w-full object-contain hidden" />
+                    <div id="no-signal-pane" class="text-gray-600 font-mono text-base flex flex-col items-center gap-2">
+                        <i class="fas fa-satellite-dish text-3xl animate-pulse"></i>
+                        <span>INGESTING CCTV FEED... STANDBY</span>
+                    </div>
+
+                    <!-- Stream Metadata Watermark -->
+                    <div class="absolute top-3 left-3 bg-black bg-opacity-80 border border-gray-700 px-2.5 py-1.5 rounded text-xs font-mono text-white flex items-center gap-2 z-10">
+                        <span class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+                        <span id="active-cam-title">CAM 01: BOP ALPHA (NORTH PERIMETER)</span>
+                    </div>
+
+                    <!-- Zero-Tolerance Rule Overlay Watermark -->
+                    <div class="absolute bottom-3 left-3 bg-black bg-opacity-80 border border-gray-700 px-3 py-1.5 rounded text-xs font-mono text-gray-300 z-10 flex gap-4">
+                        <div class="flex items-center gap-1.5"><span class="w-3 h-3 border border-red-500 bg-red-950 inline-block"></span> RED ZONE (ZERO TOLERANCE)</div>
+                        <div class="flex items-center gap-1.5"><span class="w-3 h-3 border border-yellow-500 bg-yellow-950 inline-block"></span> AMBER BUFFER ZONE</div>
+                    </div>
+                </div>
+
+                <!-- Dual Grid View (Hidden by default) -->
+                <div id="dual-view-pane" class="w-full h-full grid grid-cols-2 gap-2 p-2 hidden">
+                    <div class="relative bg-black border border-gray-800 rounded flex items-center justify-center overflow-hidden">
+                        <img id="stream-img-dual1" src="" class="max-h-full max-w-full object-contain" />
+                        <span class="absolute top-2 left-2 bg-black bg-opacity-75 text-xs font-mono px-2 py-0.5 rounded text-white border border-gray-700">CAM 01 (PERIMETER)</span>
+                    </div>
+                    <div class="relative bg-black border border-gray-800 rounded flex items-center justify-center overflow-hidden">
+                        <img id="stream-img-dual2" src="" class="max-h-full max-w-full object-contain" />
+                        <span class="absolute top-2 left-2 bg-black bg-opacity-75 text-xs font-mono px-2 py-0.5 rounded text-white border border-gray-700">CAM 02 (CHECKPOST)</span>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- Right Side: Threat Radar & Live Incident Log -->
+        <aside class="w-96 bg-gray-900 border-l border-gray-800 flex flex-col overflow-hidden">
+            
+            <!-- Incident Header & Stats -->
+            <div class="p-3 border-b border-gray-800 bg-gray-950 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-bell text-red-400"></i>
+                    <h2 class="text-xs font-bold uppercase tracking-wider text-gray-200">Incident Command Log</h2>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="btn-simulate-alert" class="bg-red-900 hover:bg-red-800 text-red-200 border border-red-700 text-[10px] px-2 py-0.5 rounded font-mono font-bold cursor-pointer transition">
+                        + TEST BREACH
+                    </button>
+                    <span class="bg-red-950 text-red-400 border border-red-800 text-xs px-2.5 py-0.5 rounded font-mono font-bold" id="alert-counter">3 INCIDENTS</span>
+                </div>
+            </div>
+
+            <!-- Incident Filter Tags -->
+            <div class="px-3 py-2 bg-gray-950 border-b border-gray-800 flex space-x-1.5 text-xs font-mono">
+                <button class="px-2 py-1 rounded bg-blue-900 text-blue-200 font-bold">ALL</button>
+                <button class="px-2 py-1 rounded bg-gray-800 text-gray-400 hover:text-white">BREACH</button>
+                <button class="px-2 py-1 rounded bg-gray-800 text-gray-400 hover:text-white">LOITER</button>
+                <button class="px-2 py-1 rounded bg-gray-800 text-gray-400 hover:text-white">VEHICLE</button>
+            </div>
+
+            <!-- Alert Scroll Area -->
+            <div id="alert-container" class="flex-1 overflow-y-auto p-2 space-y-2 font-mono">
+                <!-- Alerts injected dynamically here -->
+            </div>
+
+            <!-- Bottom Operator Status Summary -->
+            <div class="p-2.5 border-t border-gray-800 bg-gray-950 text-xs font-mono text-gray-400 flex justify-between items-center">
+                <span>SECTOR RISK INDEX:</span>
+                <span class="text-yellow-400 font-bold" id="sector-threat-level">ELEVATED (BOP-12)</span>
+            </div>
+        </aside>
+
+    </main>
+
+    <!-- Interactive Incident Replay & Evidence Dossier Modal -->
+    <div id="incident-modal" class="hidden fixed inset-0 bg-black bg-opacity-85 z-50 flex items-center justify-center p-4">
+        <div class="bg-gray-900 border border-gray-700 rounded-lg max-w-2xl w-full text-gray-200 shadow-2xl overflow-hidden font-mono flex flex-col max-h-screen">
+            
+            <!-- Modal Header -->
+            <div class="bg-gray-950 px-5 py-3 border-b border-gray-800 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full bg-red-500 animate-ping"></span>
+                    <h3 class="text-sm font-bold text-white tracking-wider uppercase" id="modal-title">BORDER INCIDENT DOSSIER</h3>
+                </div>
+                <button id="close-modal" class="text-gray-400 hover:text-white font-bold text-xl cursor-pointer">&times;</button>
+            </div>
+
+            <div class="p-5 space-y-4 overflow-y-auto flex-1">
+                
+                <!-- Snapshot & Evidence Frame -->
+                <div class="grid grid-cols-3 gap-4">
+                    <div class="col-span-2 bg-black rounded border border-gray-800 overflow-hidden flex items-center justify-center aspect-video relative">
+                        <img id="modal-snapshot-img" src="" alt="Incident Snapshot" class="w-full h-full object-cover" />
+                        <span class="absolute bottom-2 left-2 bg-black bg-opacity-75 text-xs px-2 py-0.5 rounded text-white border border-gray-700">SNAPSHOT KEYFRAME</span>
+                    </div>
+
+                    <!-- Risk Breakdown Factors -->
+                    <div class="bg-gray-950 p-3 rounded border border-gray-800 flex flex-col justify-between">
+                        <div>
+                            <div class="text-xs text-gray-400 uppercase tracking-wide mb-1">Threat Assessment</div>
+                            <div class="text-xl font-bold text-red-400 mb-2" id="modal-score">PRIORITY 85</div>
+                            <div class="text-xs text-gray-300 font-semibold mb-1">Risk Factors:</div>
+                            <div id="modal-factors-list" class="space-y-1 text-xs">
+                                <!-- Factors injected here -->
+                            </div>
+                        </div>
+                        <div class="mt-3 pt-2 border-t border-gray-800 text-xs text-gray-400" id="modal-id">
+                            ID: IBVAP-872A
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Telemetry Metrics Grid -->
+                <div class="grid grid-cols-3 gap-3 text-xs">
+                    <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
+                        <div class="text-gray-500 mb-0.5">TARGET ENTITY</div>
+                        <div class="font-bold text-gray-200 text-sm" id="modal-entity">PERSON #38</div>
+                    </div>
+                    <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
+                        <div class="text-gray-500 mb-0.5">LOCATION SECTOR</div>
+                        <div class="font-bold text-gray-200" id="modal-location">Pillar 412/3</div>
+                    </div>
+                    <div class="bg-gray-950 p-2.5 rounded border border-gray-800">
+                        <div class="text-gray-500 mb-0.5">TIMESTAMP</div>
+                        <div class="font-bold text-gray-200" id="modal-time">22:24:12 IST</div>
+                    </div>
+                </div>
+
+                <!-- Operator Decision Center -->
+                <div class="border-t border-gray-800 pt-3">
+                    <div class="text-xs text-gray-400 uppercase tracking-wider mb-2 font-bold">MHA / SSB Operator Action</div>
+                    <div class="flex gap-2">
+                        <button id="btn-qrt-dispatch" class="flex-1 bg-red-700 hover:bg-red-600 text-white font-bold py-2 px-3 rounded text-xs flex items-center justify-center gap-1.5 transition">
+                            <i class="fas fa-running"></i> DISPATCH QRT (QUICK REACTION)
+                        </button>
+                        <button id="btn-ack" class="flex-1 bg-blue-700 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded text-xs flex items-center justify-center gap-1.5 transition">
+                            <i class="fas fa-check-circle"></i> ACKNOWLEDGE & LOG
+                        </button>
+                        <button id="btn-false" class="bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold py-2 px-3 rounded text-xs flex items-center justify-center gap-1.5 transition">
+                            <i class="fas fa-times"></i> FALSE ALARM
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast for QRT Dispatch -->
+    <div id="toast-notify" class="hidden fixed bottom-6 right-6 bg-blue-900 border border-blue-500 text-white px-4 py-3 rounded-lg shadow-xl font-mono text-xs z-50 flex items-center gap-3">
+        <i class="fas fa-shield-alt text-lg text-blue-300"></i>
+        <span id="toast-text">QRT Alert Dispatched to Sector 12 Command.</span>
+    </div>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>

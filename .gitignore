@@ -1,0 +1,37 @@
+# Python bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Environments
+.env
+.venv
+env/
+venv/
+
+# Model weights (large files - download separately)
+*.pt
+*.onnx
+*.engine
+*.bin
+
+# Video files (large - download via seed script)
+data/samples/*.mp4
+data/samples/*.avi
+data/samples/*.mkv
+
+# Evidence / Runtime data (generated at runtime)
+data/snapshots/
+data/recordings/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
